@@ -620,7 +620,12 @@ class ReverseSingleRelatedObjectDescriptor(object):
         # Set the value of the related field
         for lh_field, rh_field in self.field.related_fields:
             try:
-                setattr(instance, lh_field.attname, getattr(value, rh_field.attname))
+                val = getattr(value, rh_field.attname)
+                if self.field.null is False and val is None:
+                    raise ValueError('Cannot assign None: The "%s" instance isn\'t saved in the database.' %
+                                (self.field.rel.to._meta.object_name)
+                    )
+                setattr(instance, lh_field.attname, val)
             except AttributeError:
                 setattr(instance, lh_field.attname, None)
 

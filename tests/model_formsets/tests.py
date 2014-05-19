@@ -614,9 +614,6 @@ class ModelFormsetTest(TestCase):
             'book_set-2-title': '',
         }
 
-        formset = AuthorBooksFormSet(data, instance=Author(), save_as_new=True)
-        self.assertTrue(formset.is_valid())
-
         new_author = Author.objects.create(name='Charles Baudelaire')
         formset = AuthorBooksFormSet(data, instance=new_author, save_as_new=True)
         saved = formset.save()
