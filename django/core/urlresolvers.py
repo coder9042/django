@@ -393,26 +393,23 @@ class RegexURLResolver(LocaleRegexProvider):
             raise ImproperlyConfigured(msg.format(name=self.urlconf_name))
         return patterns
 
-    def _resolve_special(self, view_type):
+    def _resolve_special(self, view_type, client=True):
         callback = getattr(self.urlconf_module, 'handler%s' % view_type, None)
         if not callback:
             # No handler specified in file; use default
             # Lazy import, since django.urls imports this file
             from django.conf import urls
-            callback = getattr(urls, 'handler%s' % view_type)
+            if client:
+                callback = getattr(urls, 'handler4xx')
+            else:
+                callback = getattr(urls, 'handler5xx')
         return get_callable(callback), {}
 
-    def resolve400(self):
-        return self._resolve_special('400')
+    def resolve4xx(self, view_type):
+        return self._resolve_special(view_type)
 
-    def resolve403(self):
-        return self._resolve_special('403')
-
-    def resolve404(self):
-        return self._resolve_special('404')
-
-    def resolve500(self):
-        return self._resolve_special('500')
+    def resolve5xx(self, view_type):
+        return self._resolve_special(view_type, False)
 
     def reverse(self, lookup_view, *args, **kwargs):
         return self._reverse_with_prefix(lookup_view, '', *args, **kwargs)

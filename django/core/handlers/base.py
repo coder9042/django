@@ -5,6 +5,7 @@ import sys
 import types
 
 from django import http
+from django.http.response import REASON_PHRASES as MSG
 from django.conf import settings
 from django.core import urlresolvers
 from django.core import signals
@@ -69,6 +70,30 @@ class BaseHandler(object):
                     and db.alias not in non_atomic_requests):
                 view = transaction.atomic(using=db.alias)(view)
         return view
+
+    def call_handler(self, request, resolver, exception, client=True):
+        view = exception.view_type
+        logger.warning(
+            '%s: %s', MSG.get(int(view), None), request.path,
+            extra={
+                'status_code': int(view),
+                'request': request
+            })
+        try:
+            if client:
+                callback, param_dict = resolver.resolve4xx(view)
+            else:
+                callback, param_dict = resolver.resolve5xx(view)
+            param_dict['view_type'] = view
+            param_dict['message'] = exception.message
+            response = callback(request, **param_dict)
+        except:
+            signals.got_request_exception.send(
+                sender=self.__class__, request=request)
+            response = self.handle_uncaught_exception(request,
+                resolver, sys.exc_info())
+
+        return response
 
     def get_response(self, request):
         "Returns an HttpResponse object for the given HttpRequest"
@@ -143,40 +168,21 @@ class BaseHandler(object):
                 response = response.render()
 
         except http.Http404 as e:
-            logger.warning('Not Found: %s', request.path,
-                        extra={
-                            'status_code': 404,
-                            'request': request
-                        })
             if settings.DEBUG:
+                logger.warning('%s: %s', MSG.get(404, None), request.path,
+                            extra={
+                                'status_code': 404,
+                                'request': request
+                            })
                 response = debug.technical_404_response(request, e)
             else:
-                try:
-                    callback, param_dict = resolver.resolve404()
-                    response = callback(request, **param_dict)
-                except:
-                    signals.got_request_exception.send(sender=self.__class__, request=request)
-                    response = self.handle_uncaught_exception(request, resolver, sys.exc_info())
+                response = self.call_handler(request, resolver, e)
 
-        except PermissionDenied:
-            logger.warning(
-                'Forbidden (Permission denied): %s', request.path,
-                extra={
-                    'status_code': 403,
-                    'request': request
-                })
-            try:
-                callback, param_dict = resolver.resolve403()
-                response = callback(request, **param_dict)
-            except:
-                signals.got_request_exception.send(
-                    sender=self.__class__, request=request)
-                response = self.handle_uncaught_exception(request,
-                    resolver, sys.exc_info())
+        except PermissionDenied as e:
+            e = http.HttpClientException('403', e.message)
+            response = self.call_handler(request, resolver, e)
 
         except SuspiciousOperation as e:
-            # The request logger receives events for any problematic request
-            # The security logger receives events for all SuspiciousOperations
             security_logger = logging.getLogger('django.security.%s' %
                             e.__class__.__name__)
             security_logger.error(
@@ -185,21 +191,21 @@ class BaseHandler(object):
                     'status_code': 400,
                     'request': request
                 })
+            e = http.HttpClientException('400', e.message)
+            response = self.call_handler(request, resolver, e)
 
-            try:
-                callback, param_dict = resolver.resolve400()
-                response = callback(request, **param_dict)
-            except:
-                signals.got_request_exception.send(
-                    sender=self.__class__, request=request)
-                response = self.handle_uncaught_exception(request,
-                    resolver, sys.exc_info())
+        except http.HttpClientException as e:
+            response = self.call_handler(request, resolver, e)
+
+        except http.HttpServerException as e:
+            response = self.call_handler(request, resolver, e, False)
 
         except SystemExit:
             # Allow sys.exit() to actually exit. See tickets #1023 and #4701
             raise
 
-        except:  # Handle everything else.
+        except:
+            # Handle everything else.
             # Get the exception info now, in case another exception is thrown later.
             signals.got_request_exception.send(sender=self.__class__, request=request)
             response = self.handle_uncaught_exception(request, resolver, sys.exc_info())
@@ -251,7 +257,8 @@ class BaseHandler(object):
         if resolver.urlconf_module is None:
             six.reraise(*exc_info)
         # Return an HttpResponse that displays a friendly error message.
-        callback, param_dict = resolver.resolve500()
+        callback, param_dict = resolver.resolve5xx('500')
+        param_dict['view_type'] = '500'
         return callback(request, **param_dict)
 
     def apply_response_fixes(self, request, response):

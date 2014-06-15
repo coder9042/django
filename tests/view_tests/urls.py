@@ -46,7 +46,7 @@ urlpatterns = [
     url(r'^$', views.index_page),
 
     # Default views
-    url(r'^non_existing_url/', defaults.page_not_found),
+    url(r'^non_existing_url/', defaults.client_error, {'view_type': '404'}),
     url(r'^server_error/', defaults.server_error),
 
     # a view that raises an exception for the debug view
@@ -56,6 +56,8 @@ urlpatterns = [
     url(r'raises403/$', views.raises403),
     url(r'raises404/$', views.raises404),
     url(r'raises500/$', views.raises500),
+    url(r'raises4xx/(\d{3,3})/$', views.raisesClientException),
+    url(r'raises5xx/(\d{3,3})/$', views.raisesServerException),
 
     # i18n views
     url(r'^i18n/', include('django.conf.urls.i18n')),

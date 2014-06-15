@@ -72,3 +72,33 @@ class DefaultsTests(TestCase):
 
         response = self.client.get('/server_error/')
         self.assertEqual(response['Content-Type'], 'text/html')
+
+    def test_4xx(self):
+        response1 = self.client.get('/raises4xx/405/')
+        response2 = self.client.get('/raises4xx/404/')
+        self.assertEqual(response1.status_code, 405)
+        self.assertEqual(response2.status_code, 404)
+        self.assertContains(response1, '<h1>METHOD NOT ALLOWED (405)</h1>', status_code=405)
+        self.assertContains(response2, '<h1>NOT FOUND (404)</h1>', status_code=404)
+
+    def test_4xx_template(self):
+        # Set up a test 403.html template.
+        with override_with_test_loader({'405.html': 'This is a test template '
+                                        'for 405.'}):
+            response = self.client.get('/raises4xx/405/')
+            self.assertContains(response, 'test template for 405', status_code=405)
+
+    def test_5xx(self):
+        response1 = self.client.get('/raises5xx/500/')
+        response2 = self.client.get('/raises5xx/507/')
+        self.assertEqual(response1.status_code, 500)
+        self.assertEqual(response2.status_code, 507)
+        self.assertContains(response1, '<h1>INTERNAL SERVER ERROR (500)</h1>', status_code=500)
+        self.assertContains(response2, '<h1>INSUFFICIENT STORAGE (507)</h1>', status_code=507)
+
+    def test_5xx_template(self):
+        # Set up a test 403.html template.
+        with override_with_test_loader({'500.html': 'This is a test template '
+                                        'for 500.'}):
+            response = self.client.get('/raises5xx/500/')
+            self.assertContains(response, 'test template for 500', status_code=500)

@@ -48,7 +48,7 @@ class DebugViewTests(TestCase):
         # Ensure no 403.html template exists to test the default case.
         with override_with_test_loader({}):
             response = self.client.get('/raises403/')
-            self.assertContains(response, '<h1>403 Forbidden</h1>', status_code=403)
+            self.assertContains(response, '<h1>FORBIDDEN (403)</h1>', status_code=403)
 
     def test_403_template(self):
         # Set up a test 403.html template.

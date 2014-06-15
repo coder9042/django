@@ -7,4 +7,5 @@ urlpatterns = []
 
 handler400 = empty_view
 handler404 = empty_view
+handler405 = empty_view
 handler500 = empty_view

@@ -453,8 +453,35 @@ class HttpResponseServerError(HttpResponse):
     status_code = 500
 
 
-class Http404(Exception):
-    pass
+class HttpClientException(Exception):
+    def __init__(self, view_type=None, *args, **kwargs):
+        super(HttpClientException, self).__init__(*args, **kwargs)
+        if view_type is None:
+            raise Exception('Cannot be none.')
+        elif view_type[0] != '4':
+            raise Exception('Client Exception are of the type 4XX.')
+        self.view_type = view_type
+
+    def __repr__(self):
+        return "%s  %s" % (self.view_type, self.message)
+
+
+class Http404(HttpClientException):
+    def __init__(self, *args, **kwargs):
+        super(Http404, self).__init__('404', *args, **kwargs)
+
+
+class HttpServerException(Exception):
+    def __init__(self, view_type=None, *args, **kwargs):
+        super(HttpServerException, self).__init__(*args, **kwargs)
+        if view_type is None:
+            raise Exception('Cannot be none.')
+        elif view_type[0] != '5':
+            raise Exception('Server Exception are of the type 5XX.')
+        self.view_type = view_type
+
+    def __repr__(self):
+        return "%s  %s" % (self.view_type, self.message)
 
 
 class JsonResponse(HttpResponse):

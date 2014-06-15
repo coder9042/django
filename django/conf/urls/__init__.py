@@ -8,12 +8,10 @@ from django.utils import six
 from django.utils.deprecation import RemovedInDjango20Warning
 
 
-__all__ = ['handler400', 'handler403', 'handler404', 'handler500', 'include', 'patterns', 'url']
+__all__ = ['handler4xx', 'handler5xx', 'include', 'patterns', 'url']
 
-handler400 = 'django.views.defaults.bad_request'
-handler403 = 'django.views.defaults.permission_denied'
-handler404 = 'django.views.defaults.page_not_found'
-handler500 = 'django.views.defaults.server_error'
+handler5xx = 'django.views.defaults.server_error'
+handler4xx = 'django.views.defaults.client_error'
 
 
 def include(arg, namespace=None, app_name=None):
